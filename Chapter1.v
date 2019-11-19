@@ -162,7 +162,8 @@ Section iterators.
 
   (* Когда мы закрываем секцию, то все секционные переменные
      становятся явными параметрами, а переменные, которые
-     так и не были использованы -- стираются *)
+     так и не были использованы -- стираются.
+     Происходит так называемая "генерализация" (обобщение) *)
 End iterators.
 
 About iter.
@@ -190,17 +191,103 @@ Compute \sum_ (1 <= i < 5) (i * 2 - 1).
 Compute \sum_ (1 <= i < 5) i.
 (*                      F -^ *)
 
+(* Ex 1 *)
+
+Inductive triple (A B C : Type) :=
+  mk_triple (a : A) (b : B) (c : C).
+
+Notation "( a , b , c )" := (mk_triple a b c).
+
+Definition fst {A B C : Type} (t : triple A B C) : A :=
+  (* match t with mk_triple a _ _ => a end. *)
+  let: mk_triple a _ _ := t in a.
+
+Definition snd {A B C : Type} (t : triple A B C) : B :=
+  (* match t with mk_triple _ b _ => b end. *)
+  let : (_, b, _) := t in b.
+
+Definition thrd {A B C : Type} (t : triple A B C) : C :=
+  match t with mk_triple _ _ c => c end.
+
+Notation "p :1" := (fst p) (at level 2).
+Notation "p :2" := (snd p) (at level 2).
+Notation "p :3" := (thrd p) (at level 2).
+
+Compute (4, 5, 8):1.
+Compute (true, false, 1):2.
+Compute (2, true, false):3.
+
+(* Ex 2 *)
+Definition addn' (n m : nat) : nat :=
+  iter n S m.
+
+Compute addn' 2 3.
+
+(* Ex 3 *)
+
+Definition muln' (n m : nat) : nat :=
+  iter n (addn' m) 0.
+
+Compute muln' 2 4.
+Compute muln' 3 4.
+
+(* Ex 4 *)
+
+(* Definition nth (A : Type) (d : A) (xs : seq A) (n : nat) := *)
+(* Некоторые аннотации типов можно опустить, они будут выведены: *)
+Definition nth (A : Type) (d : A) xs n :=
+  if xs is h :: tl then
+    if n is n'.+1 then
+      nth d tl n'
+    else
+      h
+  else
+    d.
+
+Compute nth 99 [:: 3; 7; 11; 22] 2.
+Compute nth 99 [:: 3; 7; 11; 22] 7.
+
+(* Ex 5 *)
+
+Definition rev (A : Type) (xs : seq A) : seq A :=
+  if xs is h :: tl then
+    rev tl ++ [:: h]
+  else
+    [::].
+
+Compute rev [:: 1; 2; 3].
+
+Fixpoint catrev T (s1 s2 : seq T) :=
+  if s1 is x :: xs then catrev xs (x :: s2) else s2.
+
+Definition rev' T (s : seq T) := catrev s [::].
+
+Compute rev' [:: 1; 2; 3].
+
+(* Ex 6 *)
+
+Definition flatten (A : Type) (xs : seq (seq A)) : seq A :=
+  (* foldr (fun xs acc => xs ++ acc) [::] q. *)
+  foldr cat [::] xs.
+
+Compute flatten [:: [:: 1; 2; 3]; [:: 4; 5]].
+
+(* Ex 7 *)
 
 Fixpoint all_words (T : Type) (n : nat) (xs : seq T) :=
   if n is m.+1 then
-    flatten [seq [seq x :: w | w <- (all_words m xs)] | x <- xs]
+    (* Для каждого первого символа алфавита
+       генерируем все возможные слова алфавита
+       на 1 меньшей длины и добавляем его в голову *)
+    flatten [seq [seq x :: w | w <- all_words m xs] | x <- xs]
   else
     [:: nil; nil].
 
-Compute (all_words 2 [:: 1; 2; 3]).
+Compute all_words 2 [:: 1; 2; 3].
 
 (*  [:: [:: 1; 1]; [:: 1; 2]; [:: 1; 3];
         [:: 2; 1]; [:: 2; 2]; [:: 2; 3];
         [:: 3; 1]; [:: 3; 2]; [:: 3; 3]
     ] *)
+
 End Chapter1.
